@@ -1,0 +1,2 @@
+#!/bin/sh
+python3 -tt -c "from metrics import new_editor_stats; new_editor_stats.main();" "$@"
