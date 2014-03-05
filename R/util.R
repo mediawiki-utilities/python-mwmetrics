@@ -36,6 +36,12 @@ tsv_loader = function(filename, ident, cleanup=function(x){x}){
 	)
 }
 
+prop.se = function(k, n){
+	prop = k/n
+	
+	sqrt(prop*(1-prop)/n)
+}
+
 geo.mean = function(x, ...){
 	exp(mean(log(x), ...))
 }

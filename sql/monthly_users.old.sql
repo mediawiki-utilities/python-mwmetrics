@@ -1,5 +1,5 @@
 SELECT
-    DATABASE() AS wiki,
+    DATABASE() AS wiki_db,
     DATE(CONCAT(LEFT(IFNULL(approx.user_registration, user.user_registration), 6), "01")) AS registration_month,
     attachment.log_id IS NOT NULL OR by_proxy.log_id IS NOT NULL AS attached,
     SUM(user_id IS NOT NULL) AS registered_users,

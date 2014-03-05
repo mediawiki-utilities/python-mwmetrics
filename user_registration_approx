@@ -1,0 +1,2 @@
+#!/bin/sh
+python3 -tt -c "from metrics import user_registration_approx; user_registration_approx.main();" "$@"

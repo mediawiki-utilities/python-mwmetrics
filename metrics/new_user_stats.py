@@ -1,14 +1,26 @@
 # Requires python3
 import argparse, sys
 
-from mw import database
-from mw.types import Timestamp
+from mwutil import database
+from mwutil.types import Timestamp
 
 from .util import tsv
 
+HEADERS = [
+	"wiki_db",
+	"user_id", 
+	"registration_approx",
+	"day_revisions",
+	"day_main_revisions",
+	"day_reverted_main_revisions",
+	"week_revisions",
+	"week_main_revisions",
+	"week_reverted_main_revisions"
+]
+
 def parse_users(f):
 	if not f.isatty():
-		return tsv.Reader(f, types=[int, tsv.utf8, tsv.utf8])
+		return tsv.Reader(f, types=[str, int, str])
 
 def main():
 	
@@ -24,13 +36,6 @@ def main():
 		default=parse_users(sys.stdin)
 	)
 	parser.add_argument(
-		"-t", "--lifetime",
-		help="How much time after registration should a user's " + \
-		     "contributions be examined? (seconds)",
-		type=int,
-		default=60*60*24*7 # One week
-	)
-	parser.add_argument(
 		"--revert_cutoff",
 		help="How long to wait for a revert to occur? (seconds)",
 		type=int,
@@ -42,6 +47,11 @@ def main():
 		type=int,
 		default=15
 	)
+	parser.add_argument(
+		"--no-headers",
+		help="Skip printing the headers",
+		action="store_true"
+	)
 	
 	database.DB.add_args(parser)
 	
@@ -49,26 +59,29 @@ def main():
 	
 	db = database.DB.from_args(args)
 	
-	run(db, args.users, args.lifetime, 
-	        args.revert_cutoff, args.revert_radius)
+	run(db, args.users, args.revert_cutoff, args.revert_radius, args.no_headers)
 
 
-def run(db, users, lifetime, revert_cutoff, revert_radius):
+def run(db, users, revert_cutoff, revert_radius, no_headers):
 	
-	output = tsv.Writer(sys.stdout, 
-	                    headers=["user_id", 
-	                             "revisions", 
-	                             "main_revisions", 
-	                             "reverted_main_revisions"])
+	if no_headers:
+		headers=None
+	else:
+		headers=HEADERS
+	
+	output = tsv.Writer(sys.stdout, headers=headers)
 	
 	for user in users:
+		sys.stderr.write("{0}: ".format(user.user_id))
+		day_revisions = 0
+		day_main_revisions = 0
+		day_reverted_main_revisions = 0
+		week_revisions = 0
+		week_main_revisions = 0
+		week_reverted_main_revisions = 0
 		
-		revisions = 0
-		main_revisions = 0
-		reverted_main_revisions = 0
-		
-		registration = Timestamp(user.user_registration)
-		end_of_life = Timestamp(int(registration) + lifetime)
+		registration = Timestamp(user.registration_approx)
+		end_of_life = Timestamp(int(registration) + 60*60*24*7) # One week
 		
 		user_revisions = db.revisions.query(
 			user_id=user.user_id, 
@@ -78,10 +91,14 @@ def run(db, users, lifetime, revert_cutoff, revert_radius):
 		)
 		
 		for rev in user_revisions:
-			revisions += 1
+			day = Timestamp(rev['rev_timestamp']) - registration <= 60*60*24 # one day
+			
+			week_revisions += 1
+			day_revisions += day
 			
 			if rev['page_namespace'] == 0:
-				main_revisions += 1
+				week_main_revisions += 1
+				day_main_revisions += day
 				
 				rev_timestamp = Timestamp(rev['rev_timestamp'])
 				cutoff_timestamp = Timestamp(int(rev_timestamp) + revert_cutoff)
@@ -90,16 +107,24 @@ def run(db, users, lifetime, revert_cutoff, revert_radius):
 				                                  before=cutoff_timestamp)
 				
 				if revert != None: # Reverted edit!
-					reverted_main_revisions += 1
+					week_reverted_main_revisions += 1
+					day_reverted_main_revisions += day
 					sys.stderr.write("r")
 				else:
 					sys.stderr.write(".")
 			else:
 				sys.stderr.write("_")
 				
-			
 		
-		sys.stderr.write(str(int(main_revisions > reverted_main_revisions)))
-		output.write([user.user_id, revisions, main_revisions, reverted_main_revisions])
+		sys.stderr.write("\n")
+		output.write([
+			user.wiki_db,
+			user.user_id,
+			day_revisions,
+			day_main_revisions,
+			day_reverted_main_revisions,
+			week_revisions,
+			week_main_revisions,
+			week_reverted_main_revisions
+		])
 	
-	sys.stderr.write("\n")
