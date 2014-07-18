@@ -20,13 +20,21 @@ user_stats$new_editor = with(
 	user_stats,
 	day_main_revisions > 0
 )
-user_stats$day_productive = with(
+user_stats$day_productive_1 = with(
 	user_stats,
-	day_main_revisions >= 1 & day_main_revisions > day_reverted_main_revisions
+	new_editor & day_main_revisions > day_reverted_main_revisions
 )
-user_stats$week_productive = with(
+user_stats$day_productive_5 = with(
 	user_stats,
-	day_main_revisions >= 1 & week_main_revisions > week_reverted_main_revisions
+	new_editor & day_main_revisions - day_reverted_main_revisions >= 5
+)
+user_stats$week_productive_1 = with(
+	user_stats,
+	new_editor & week_main_revisions > week_reverted_main_revisions
+)
+user_stats$week_productive_5 = with(
+	user_stats,
+	new_editor & week_main_revisions - week_reverted_main_revisions >= 5
 )
 
 
@@ -36,7 +44,18 @@ normalized.monthly.productive = rbind(
 			newly_registered_users = length(user_id),
 			new_editors = sum(new_editor),
 			t = "day",
-			productive_new_editors = sum(day_productive)
+			n = "1",
+			productive_new_editors = sum(day_productive_1)
+		),
+		by=list(wiki_db, registration_month)
+	],
+	user_stats[,
+		list(
+			newly_registered_users = length(user_id),
+			new_editors = sum(new_editor),
+			t = "day",
+			n = "5",
+			productive_new_editors = sum(day_productive_5)
 		),
 		by=list(wiki_db, registration_month)
 	],
@@ -45,7 +64,18 @@ normalized.monthly.productive = rbind(
 			newly_registered_users = length(user_id),
 			new_editors = sum(new_editor),
 			t = "week",
-			productive_new_editors = sum(week_productive)
+			n = "1",
+			productive_new_editors = sum(week_productive_1)
+		),
+		by=list(wiki_db, registration_month)
+	],
+	user_stats[,
+		list(
+			newly_registered_users = length(user_id),
+			new_editors = sum(new_editor),
+			t = "week",
+			n = "5",
+			productive_new_editors = sum(week_productive_5)
 		),
 		by=list(wiki_db, registration_month)
 	]
@@ -57,7 +87,8 @@ plot_productive_new_editors_per_newly_registered_user = function(dt){
 		aes(
 			x=registration_month,
 			y=productive_new_editors/newly_registered_users,
-			color=t
+			color=t,
+			linetype=n
 		)
 	) + 
 	geom_line() +
@@ -79,40 +110,15 @@ plot_productive_new_editors_per_new_editor = function(dt){
 		aes(
 			x=registration_month,
 			y=productive_new_editors/new_editors,
-			color=t
+			color=t,
+			linetype=n
 		)
 	) + 
 	geom_line() +
 	labs(title="Productive new editors per new editor") + 
 	scale_y_continuous(
 		"Proportion",
-		limits=c(.5, 1.1)
-	) + 
-	scale_x_date(
-		"Registration month"
-	) + 
-	theme_bw()
-}
-
-
-plot_t_factor= function(dt){
-	ggplot(
-		dt[,
-			list(
-				t_factor = sum(day_productive) /  # Dividing by new_editors or newly_registered_users  
-						   sum(week_productive)   # here isn't necessary
-			),
-			list(registration_month)
-		],
-		aes(
-			x=registration_month,
-			y=t_factor
-		)
-	) + 
-	geom_line() + 
-	scale_y_continuous(
-		"Productive proportion factor (day/week)",
-		limits=c(.5, 1.1)
+		limits=c(.05, 1.1)
 	) + 
 	scale_x_date(
 		"Registration month"
@@ -146,15 +152,98 @@ for(wiki in unique(user_stats$wiki_db)){
 		normalized.monthly.productive[wiki_db == wiki,]
 	))
 	dev.off()
-	
-	svg(
-		paste(
-			"productive_new_editor/plots/proportions/monthly",
-			"productive_new_editors.t_factor",
-			wiki, "svg", sep="."
-		),
-		height=5,
-		width=7)
-	print(plot_t_factor(user_stats[wiki_db == wiki,]))
-	dev.off()
 }
+
+
+	
+svg(
+	paste(
+		"productive_new_editor/plots/proportions/monthly",
+		"productive_new_editors.t_factor.svg", sep="."
+	),
+	height=9,
+	width=7)
+ggplot(
+	rbind(
+		user_stats[,
+			list(
+				t_factor = sum(day_productive_1) /  # Dividing by new_editors or newly_registered_users  
+						   sum(week_productive_1),  # here isn't necessary
+				users = sum(week_productive_1),
+				n = "n = 1"
+			),
+			list(registration_month, wiki_db)
+		],
+		user_stats[,
+			list(
+				t_factor = sum(day_productive_5) /  # Dividing by new_editors or newly_registered_users  
+						   sum(week_productive_5),  # here isn't necessary
+				users = sum(week_productive_5),
+				n = "n = 5"
+			),
+			list(registration_month, wiki_db)
+		]
+	)[users >= 10,],
+	aes(
+		x=registration_month,
+		y=t_factor,
+		color=wiki_db
+	)
+) + 
+geom_line() + 
+scale_y_continuous(
+	"Productive proportion factor (day/week)",
+	limits=c(.3, 1.1)
+) + 
+scale_x_date(
+	"Registration month"
+) + 
+theme_bw() + 
+facet_wrap(~ n, ncol=1)
+dev.off()
+
+svg(
+	paste(
+		"productive_new_editor/plots/proportions/monthly",
+		"productive_new_editors.n_factor.svg", sep="."
+	),
+	height=9,
+	width=7)
+ggplot(
+	rbind(
+		user_stats[,
+			list(
+				n_factor = sum(day_productive_5) /  # Dividing by new_editors or newly_registered_users  
+						   sum(day_productive_1),   # here isn't necessary
+				users = length(user_id),
+				t = "t = day"
+			),
+			list(registration_month, wiki_db)
+		],
+		user_stats[,
+			list(
+				n_factor = sum(week_productive_5) /  # Dividing by new_editors or newly_registered_users  
+						   sum(week_productive_1),   # here isn't necessary
+				users = sum(week_productive_1),
+				t = "t = week"
+			),
+			list(registration_month, wiki_db)
+		]
+	)[users >= 10,],
+	aes(
+		x=registration_month,
+		y=n_factor,
+		color=wiki_db
+	)
+) + 
+geom_line() + 
+scale_y_continuous(
+	"Productive proportion factor (5 edits / 1 edit)",
+	limits=c(0, .6)
+) + 
+scale_x_date(
+	"Registration month"
+) + 
+theme_bw() +
+facet_wrap(~ t, ncol=1)
+dev.off()

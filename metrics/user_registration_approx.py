@@ -3,7 +3,7 @@ from .util import tsv
 
 def user_registrations(f):
 	if not f.isatty():
-		return tsv.Reader(f, types=[str, int, str, str])
+		return tsv.Reader(f, types=[str, int, str, str, str])
 	
 
 def if_none(val, none_val):
@@ -43,10 +43,10 @@ def main():
 		
 		if registration_approx == None:
 			# Set for the first row
-			registration_approx = row.first_edit
-		elif row.first_edit != None:
+			registration_approx = row.first_revision
+		elif row.first_revision != None:
 			# Update to min
-			registration_approx = min(registration_approx, row.first_edit)
+			registration_approx = row.first_revision
 		
 		writer.write([
 			row.wiki_db, 

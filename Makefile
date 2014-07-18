@@ -26,6 +26,14 @@ datasets/monthly_new_user_survival.tsv: sql/monthly_new_user_survival.sql \
 	cat sql/monthly_new_user_survival.sql | \
 	mysql $(staging) > \
 	datasets/monthly_new_user_survival.tsv
+	
+datasets/monthly_new_user_survival_groups.tsv: sql/monthly_new_user_survival_groups.sql \
+                            datasets/staging/new_user_info.table \
+                            datasets/staging/new_user_revisions.table \
+                            datasets/staging/user_activity_months.table
+	cat sql/monthly_new_user_survival_groups.sql | \
+	mysql $(staging) > \
+	datasets/monthly_new_user_survival_groups.tsv
 
 datasets/monthly_new_user_activity.tsv: sql/monthly_new_user_activity.sql \
                             datasets/staging/new_user_info.table \
@@ -199,7 +207,8 @@ datasets/enwiki/user_registration_approx.table: datasets/enwiki/user_registratio
 	datasets/enwiki/user_registration_approx.table
 	
 datasets/enwiki/user_registration_approx.no_header.tsv: sql/old_user_registration_guess.sql \
-                                                        datasets/enwiki/user_first_edit.table
+                                                        datasets/enwiki/user_first_edit.table \
+                                                        metrics/user_registration_approx.py
 	echo "SET @wiki_db = 'enwiki';" | \
 	cat - sql/old_user_registration_guess.sql | \
 	mysql $(staging) | \
@@ -403,6 +412,22 @@ datasets/dewiki/sampled_new_user_stats.table: datasets/dewiki/sampled_new_user_s
                                ## Portuguese ##
 ################################################################################
 
+####### user_activity_months
+datasets/ptwiki/user_activity_months.table: datasets/ptwiki/user_activity_months.no_header.tsv \
+                                         datasets/staging/user_activity_months.table
+	
+	mysql $(staging) -e "DELETE FROM user_activity_months WHERE wiki_db = 'ptwiki';" && \
+	ln -s -f user_activity_months.no_header.tsv datasets/ptwiki/user_activity_months && \
+	mysqlimport $(staging) --local datasets/ptwiki/user_activity_months && \
+	rm -f datasets/ptwiki/user_activity_months && \
+	mysql $(staging) -e "SELECT COUNT(*), NOW() FROM user_activity_months WHERE wiki_db = 'ptwiki';" > \
+	datasets/ptwiki/user_activity_months.table
+	
+datasets/ptwiki/user_activity_months.no_header.tsv: sql/user_activity_months.sql
+	cat sql/user_activity_months.sql | \
+	mysql $(ptwiki) -N > \
+	datasets/ptwiki/user_activity_months.no_header.tsv
+
 ####### new_user_survival
 datasets/ptwiki/new_user_survival.table: datasets/ptwiki/new_user_survival.no_header.tsv \
                                          datasets/staging/new_user_survival.table
@@ -540,6 +565,22 @@ datasets/ptwiki/sampled_new_user_stats.table: datasets/ptwiki/sampled_new_user_s
                                 ###########
                                ## Spanish ##
 ################################################################################
+
+####### user_activity_months
+datasets/eswiki/user_activity_months.table: datasets/eswiki/user_activity_months.no_header.tsv \
+                                         datasets/staging/user_activity_months.table
+	
+	mysql $(staging) -e "DELETE FROM user_activity_months WHERE wiki_db = 'eswiki';" && \
+	ln -s -f user_activity_months.no_header.tsv datasets/eswiki/user_activity_months && \
+	mysqlimport $(staging) --local datasets/eswiki/user_activity_months && \
+	rm -f datasets/eswiki/user_activity_months && \
+	mysql $(staging) -e "SELECT COUNT(*), NOW() FROM user_activity_months WHERE wiki_db = 'eswiki';" > \
+	datasets/eswiki/user_activity_months.table
+	
+datasets/eswiki/user_activity_months.no_header.tsv: sql/user_activity_months.sql
+	cat sql/user_activity_months.sql | \
+	mysql $(eswiki) -N > \
+	datasets/eswiki/user_activity_months.no_header.tsv
 
 ####### new_user_survival
 datasets/eswiki/new_user_survival.table: datasets/eswiki/new_user_survival.no_header.tsv \
@@ -682,6 +723,22 @@ datasets/eswiki/sampled_new_user_stats.table: datasets/eswiki/sampled_new_user_s
                                ## Polish ##
 ################################################################################
 
+####### user_activity_months
+datasets/plwiki/user_activity_months.table: datasets/plwiki/user_activity_months.no_header.tsv \
+                                         datasets/staging/user_activity_months.table
+	
+	mysql $(staging) -e "DELETE FROM user_activity_months WHERE wiki_db = 'plwiki';" && \
+	ln -s -f user_activity_months.no_header.tsv datasets/plwiki/user_activity_months && \
+	mysqlimport $(staging) --local datasets/plwiki/user_activity_months && \
+	rm -f datasets/plwiki/user_activity_months && \
+	mysql $(staging) -e "SELECT COUNT(*), NOW() FROM user_activity_months WHERE wiki_db = 'plwiki';" > \
+	datasets/plwiki/user_activity_months.table
+	
+datasets/plwiki/user_activity_months.no_header.tsv: sql/user_activity_months.sql
+	cat sql/user_activity_months.sql | \
+	mysql $(plwiki) -N > \
+	datasets/plwiki/user_activity_months.no_header.tsv
+
 ####### new_user_survival
 datasets/plwiki/new_user_survival.table: datasets/plwiki/new_user_survival.no_header.tsv \
                                          datasets/staging/new_user_survival.table
@@ -823,6 +880,22 @@ datasets/plwiki/sampled_new_user_stats.table: datasets/plwiki/sampled_new_user_s
                                ## French ##
 ################################################################################
 
+####### user_activity_months
+datasets/frwiki/user_activity_months.table: datasets/frwiki/user_activity_months.no_header.tsv \
+                                         datasets/staging/user_activity_months.table
+	
+	mysql $(staging) -e "DELETE FROM user_activity_months WHERE wiki_db = 'frwiki';" && \
+	ln -s -f user_activity_months.no_header.tsv datasets/frwiki/user_activity_months && \
+	mysqlimport $(staging) --local datasets/frwiki/user_activity_months && \
+	rm -f datasets/frwiki/user_activity_months && \
+	mysql $(staging) -e "SELECT COUNT(*), NOW() FROM user_activity_months WHERE wiki_db = 'frwiki';" > \
+	datasets/frwiki/user_activity_months.table
+	
+datasets/frwiki/user_activity_months.no_header.tsv: sql/user_activity_months.sql
+	cat sql/user_activity_months.sql | \
+	mysql $(frwiki) -N > \
+	datasets/frwiki/user_activity_months.no_header.tsv
+
 ####### new_user_survival
 datasets/frwiki/new_user_survival.table: datasets/frwiki/new_user_survival.no_header.tsv \
                                          datasets/staging/new_user_survival.table
@@ -963,6 +1036,22 @@ datasets/frwiki/sampled_new_user_stats.table: datasets/frwiki/sampled_new_user_s
                                 ###########
                                ## Russian ##
 ################################################################################
+
+####### user_activity_months
+datasets/ruwiki/user_activity_months.table: datasets/ruwiki/user_activity_months.no_header.tsv \
+                                         datasets/staging/user_activity_months.table
+	
+	mysql $(staging) -e "DELETE FROM user_activity_months WHERE wiki_db = 'ruwiki';" && \
+	ln -s -f user_activity_months.no_header.tsv datasets/ruwiki/user_activity_months && \
+	mysqlimport $(staging) --local datasets/ruwiki/user_activity_months && \
+	rm -f datasets/ruwiki/user_activity_months && \
+	mysql $(staging) -e "SELECT COUNT(*), NOW() FROM user_activity_months WHERE wiki_db = 'ruwiki';" > \
+	datasets/ruwiki/user_activity_months.table
+	
+datasets/ruwiki/user_activity_months.no_header.tsv: sql/user_activity_months.sql
+	cat sql/user_activity_months.sql | \
+	mysql $(ruwiki) -N > \
+	datasets/ruwiki/user_activity_months.no_header.tsv
 
 ####### new_user_survival
 datasets/ruwiki/new_user_survival.table: datasets/ruwiki/new_user_survival.no_header.tsv \

@@ -9,7 +9,8 @@ SELECT
     @wiki_db AS wiki_db,
     user_id,
     user_registration,
-    first_edit
+    first_revision,
+    first_archived
 FROM user_registration_type
 LEFT JOIN user_first_edit USING (wiki_db, user_id)
 WHERE 
