@@ -26,4 +26,4 @@ def decode_row(line, headers=None):
     if headers is None:
         return [decode(v) for v in line.strip().split("\t")]
     else:
-        return {h:decode(v) for h, v in zip(headers, decode_row(line))}
+        return {h:v for h, v in zip(headers, decode_row(line))}

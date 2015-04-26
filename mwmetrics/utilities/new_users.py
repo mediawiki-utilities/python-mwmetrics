@@ -12,10 +12,10 @@ Options:
     <dbname>                 The database name to connect to.
     --host=<host>            The database host to connect to
                              [default: analytics-store.eqiad.wmnet]
-    -u --user=<user>  T      The database user to connect as
+    -u --user=<user>         The database user to connect as
                              [default: <current-user>]
     --defaults-file=<path>   The location of a mysql defaults file to use
-        [default: ~/.my.cnf]
+                             [default: ~/.my.cnf]
     --users=<path>           The path to a TSV file containing the column
                              'user_id' of users to process [default: <stdin>]
     --revert-radius=<revs>   The maximum number of revisions a revert can span
@@ -30,6 +30,7 @@ from collections import defaultdict
 
 import docopt
 from mw import Timestamp, database
+from mw.lib import reverts
 
 from ..util import tsv
 
@@ -66,6 +67,7 @@ def main(argv=None):
     else:
         tsv_file = open(args['--users'], "r")
 
+
     user_ids = (row['user_id'] for row in tsv.read(tsv_file, header=True))
 
     db_kwargs = {'db': args['<dbname>']}
@@ -74,6 +76,8 @@ def main(argv=None):
         db_kwargs['user'] = getpass.getuser()
     else:
         db_kwargs['user'] = args['--user']
+
+    db_kwargs['read_default_file'] = os.path.expanduser(args['--defaults-file'])
 
     db = database.DB.from_params(**db_kwargs)
 
@@ -92,7 +96,13 @@ def run(db, user_ids, revert_radius, revert_window):
         row = defaultdict(lambda: 0)
         row['user_id'] = 0
 
-        registration = Timestamp(user.registration_approx)
+        user = db.users.get(user_id)
+        if user['user_registration'] is None:
+            sys.stderr.write("<no registration>\n")
+            continue
+        registration = Timestamp(user['user_registration'])
+        row['user_registration'] = registration.short_format()
+
         end_of_first_day = registration + 60*60*24 # One day
         end_of_first_week = registration + 60*60*24*7 # One week
 
@@ -116,15 +126,16 @@ def run(db, user_ids, revert_radius, revert_window):
                 row['week_main_revisions'] += 1
                 row['day_main_revisions'] += 1 if first_day else 0
 
-                revert = db.revisions.revert(rev, radius=revert_radius,
-                                                  window=revert_window)
+                revert = reverts.database.check_row(db, rev,
+                                                    radius=revert_radius,
+                                                    window=revert_window)
 
                 if revert != None: # Reverted edit!
                     row['week_reverted_main_revisions'] += 1
-                    row['day_reverted_main_revisions'] += day
-                    sys.stderr.write("r")
+                    row['day_reverted_main_revisions'] += 1 if first_day else 0
+                    sys.stderr.write("r");sys.stderr.flush()
                 else:
-                    sys.stderr.write(".")
+                    sys.stderr.write(".");sys.stderr.flush()
             else:
                 row['week_wp_revisions'] += 1 if ns in WP_NAMESPACES else 0
                 row['day_wp_revisions'] += 1 if first_day and \
@@ -134,8 +145,8 @@ def run(db, user_ids, revert_radius, revert_window):
                                                 ns in USER_NAMESPACES else 0
                 row['week_talk_revisions'] += 1 if ns in TALK_NAMESPACES else 0
                 row['day_talk_revisions'] += 1 if first_day and \
-                                                ns in WTALK_NAMESPACES else 0
-                sys.stderr.write("_")
+                                                ns in TALK_NAMESPACES else 0
+                sys.stderr.write("_");sys.stderr.flush()
 
 
         sys.stderr.write("\n")
