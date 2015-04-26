@@ -1,0 +1,4 @@
+#!/usr/bin/env python3
+from mwmetrics import mwmetrics
+
+mwmetrics.main()
