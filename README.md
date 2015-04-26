@@ -1,7 +1,20 @@
-# WMF Metrics Standardization
+# MediaWiki Metrics
 
-A collection of data aggregation and analysis code to explore and 
-standardize a key set of metrics for the Wikimedia Foundation.
-See https://www.mediawiki.org/wiki/Analytics/Epics/Editor_Engagement_Vital_Signs
+A collection of scripts and utilities for extracting behavioral metrics from
+Wikipedia editors
 
-MIT Licensed.
+    $ mwmetrics -h
+
+    This script provides access to a set of utilities generating standardized user
+    metrics.
+
+    * new_user_stats -- Extracts newcomer-relevant metrics for a set of users
+    * user_registration_approx -- Processes user registrations before
+
+    Usage:
+        mwmetrics (-h | --help)
+        mwmetrics <utility> [-h | --help]
+
+    Options:
+        -h | --help  Shows this documentation
+        <utility>    The name of the utility to run
