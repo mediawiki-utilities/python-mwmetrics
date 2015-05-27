@@ -5,7 +5,7 @@ Usage:
     new_users -h --help
     new_users <dbname> [--host=<host>] [-u=<user>] [--defaults-file=<path>]
                        [--users=<path>] [--revert-radius=<revs>]
-                       [--revert-window=<hours>]
+                       [--revert-window=<hours>] [--session-cutoff=<secs>]
 
 
 Options:
@@ -22,6 +22,8 @@ Options:
                              [default: 15]
     --revert-window=<hours>  The maximum number of hours after a revision is
                              saved to look for a reverting edit. [default: 48]
+    --session-cutoff=<secs>  The maximum inter-activity time allowable within
+                             an edit session. [default: 3600]
 """
 import getpass
 import os
@@ -50,14 +52,17 @@ HEADERS = [
     "week_wp_revisions",
     "week_talk_revisions",
     "week_user_revisions",
-    "surviving_week_week",
-    "surviving_month_month"
+    "surviving",
+    "sessions",
+    "time_spent_editing"
 ]
 
 MAIN_NAMESPACES = {0}
 WP_NAMESPACES = {4,5}
 TALK_NAMESPACES = {1,3,5,7,9,11,13,15,17,19}
 USER_NAMESPACES = {2,3}
+SESSION_PADDING = 410 # seconds
+TRIAL_PERIOD = 60*60*24*3 # 3 days
 
 def main(argv=None):
     args = docopt.docopt(__doc__, argv=argv)
@@ -83,18 +88,20 @@ def main(argv=None):
 
     revert_radius = int(args['--revert-radius'])
     revert_window = float(args['--revert-window']) * 60*60
+    session_cutoff = in(args['--session-cutoff'])
 
-    run(db, user_ids, revert_radius, revert_window)
+    run(db, user_ids, revert_radius, revert_window, session_cutoff)
 
 
-def run(db, user_ids, revert_radius, revert_window):
+def run(db, user_ids, revert_radius, revert_window, session_cutoff):
 
     print(tsv.encode_row(HEADERS))
 
     for user_id in user_ids:
         sys.stderr.write("{0}: ".format(user_id))
         row = defaultdict(lambda: 0)
-        row['user_id'] = 0
+        row['user_id'] = user_id
+        row['surviving'] = False # Preliminary value
 
         user = db.users.get(user_id)
         if user['user_registration'] is None:
@@ -113,6 +120,10 @@ def run(db, user_ids, revert_radius, revert_window):
             include_page=True
         )
 
+        session_cache = session.Cache(cutoff=session_cutoff)
+        session_cache.process(user_id, registration,
+                              ("registration", registration))
+
         for rev in first_week_revisions:
             rev_timestamp = Timestamp(rev['rev_timestamp'])
             ns = rev['page_namespace']
@@ -121,6 +132,9 @@ def run(db, user_ids, revert_radius, revert_window):
 
             row['week_revisions'] += 1
             row['day_revisions'] += 1 if first_day else 0
+
+            if rev_timestamp >= registration + TRIAL_PERIOD:
+                row['surviving'] = True
 
             if ns in MAIN_NAMESPACES:
                 row['week_main_revisions'] += 1
@@ -149,6 +163,27 @@ def run(db, user_ids, revert_radius, revert_window):
                 sys.stderr.write("_");sys.stderr.flush()
 
 
+            sessions = session_cache.process(user_id, rev_timestamp,
+                                             ("edit", rev_timestamp))
+            update_row_with_session_metrics(row, sessions)
+
+        sessions = session_cache.get_active_sessions()
+        update_row_with_session_metrics(row, sessions)
+
         sys.stderr.write("\n")
         sys.stdout.write(tsv.encode_row(row, headers=HEADERS))
         sys.stdout.write("\n")
+
+def update_row_with_session_metrics(row, sessions):
+    for session in sessions:
+        first_type, first_timestamp = session.events[0]
+        last_type, last_timestamp = session.events[-1]
+        if first_type == "registration":
+            row['time_spent_editing'] += last_timestamp - \
+                                         first_timestamp
+        else:
+            row['time_spent_editing'] += SESSION_PADDING + \
+                                         (last_timestamp -
+                                          first_timestamp)
+
+        row['sessions'] += 1
