@@ -32,14 +32,13 @@ from collections import defaultdict
 
 import docopt
 from mw import Timestamp, database
-from mw.lib import reverts
+from mw.lib import reverts, sessions
 
 from ..util import tsv
 
 HEADERS = [
     "user_id",
     "user_registration",
-    "registration_action",
     "day_revisions",
     "day_reverted_main_revisions",
     "day_main_revisions",
@@ -120,7 +119,7 @@ def run(db, user_ids, revert_radius, revert_window, session_cutoff):
             include_page=True
         )
 
-        session_cache = session.Cache(cutoff=session_cutoff)
+        session_cache = sessions.Cache(cutoff=session_cutoff)
         session_cache.process(user_id, registration,
                               ("registration", registration))
 
@@ -145,6 +144,7 @@ def run(db, user_ids, revert_radius, revert_window, session_cutoff):
                                                     window=revert_window)
 
                 if revert != None: # Reverted edit!
+                    print(rev)
                     row['week_reverted_main_revisions'] += 1
                     row['day_reverted_main_revisions'] += 1 if first_day else 0
                     sys.stderr.write("r");sys.stderr.flush()
@@ -163,12 +163,12 @@ def run(db, user_ids, revert_radius, revert_window, session_cutoff):
                 sys.stderr.write("_");sys.stderr.flush()
 
 
-            sessions = session_cache.process(user_id, rev_timestamp,
-                                             ("edit", rev_timestamp))
-            update_row_with_session_metrics(row, sessions)
+            user_sessions = session_cache.process(user_id, rev_timestamp,
+                                                  ("edit", rev_timestamp))
+            update_row_with_session_metrics(row, user_sessions)
 
-        sessions = session_cache.get_active_sessions()
-        update_row_with_session_metrics(row, sessions)
+        user_sessions = session_cache.get_active_sessions()
+        update_row_with_session_metrics(row, user_sessions)
 
         sys.stderr.write("\n")
         sys.stdout.write(tsv.encode_row(row, headers=HEADERS))
