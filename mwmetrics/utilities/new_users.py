@@ -72,7 +72,7 @@ def main(argv=None):
         tsv_file = open(args['--users'], "r")
 
 
-    user_ids = (row['user_id'] for row in tsv.read(tsv_file, header=True))
+    user_ids = (int(row['user_id']) for row in tsv.read(tsv_file, header=True))
 
     db_kwargs = {'db': args['<dbname>']}
     db_kwargs['host'] = args['--host']

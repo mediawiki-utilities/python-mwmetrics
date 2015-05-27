@@ -11,7 +11,7 @@ def read(f, header=False):
         yield decode_row(line, headers=headers)
 
 def encode(value):
-    return json.dumps(value)
+    return json.dumps(value).strip('"')
 
 def encode_row(values, headers=None):
     if headers is None:
@@ -20,7 +20,7 @@ def encode_row(values, headers=None):
         return "\t".join(encode(values[h]) for h in headers)
 
 def decode(value):
-    return json.loads(value)
+    return json.loads('"' + value + '"')
 
 def decode_row(line, headers=None):
     if headers is None:

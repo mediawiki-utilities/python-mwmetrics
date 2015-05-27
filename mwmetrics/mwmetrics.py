@@ -39,6 +39,7 @@ def main():
 
     module_name = sys.argv[1]
     try:
+        sys.path.insert(0, ".")
         module = import_module(".utilities." + module_name, package="mwmetrics")
     except ImportError:
         sys.stderr.write(traceback.format_exc())
