@@ -88,7 +88,7 @@ def main(argv=None):
 
     revert_radius = int(args['--revert-radius'])
     revert_window = float(args['--revert-window']) * 60*60
-    session_cutoff = in(args['--session-cutoff'])
+    session_cutoff = int(args['--session-cutoff'])
 
     run(db, user_ids, revert_radius, revert_window, session_cutoff)
 
